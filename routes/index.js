@@ -90,4 +90,23 @@ router.post('/updateUserInfo', function (req, res) {
     }
   })
 })
+
+// 获取用户信息(根据cookie中的userid)
+router.get('/user', function (req, res) {
+  const userid = req.cookies.userid
+  if (!userid) {
+    return res.send({
+      code: 401,
+      msg: '请先登录',
+    })
+  } else {
+    UserModel.findOne({_id: userid}, filter, function (error, user) {
+      res.send({
+        code: 0,
+        data: user,
+        msg: '获取用户数据成功',
+      })
+    })
+  }
+})
 module.exports = router;
