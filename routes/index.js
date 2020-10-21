@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const md5 = require('blueimp-md5');
-const {UserModel} = require('../db/models');
+const {UserModel, ChatModel} = require('../db/models');
 const filter = {password:0} // 查询时指定过滤的属性
 
 // 注册的路由
@@ -122,4 +122,49 @@ router.get('/userList', function (req, res) {
   })
 
 })
+
+// 获取当前用户所有相关的聊天信息列表
+router.get('/messageList', function (req, res) {
+  // 获取用户userid
+  const userid = req.cookies.userid;
+  // 查询得到所有user文档数组
+  UserModel.find(function (err, userDocs) {
+    // 用对象存储所有user信息:key为user的_id，val为name和header组成的user对象
+    const users = userDocs.reduce((users, user) => {
+      users[user._id] = { username: user.username, header: user.header }
+      return users
+    }, {})
+  })
+  // 查询userid相关的所有聊天信息
+  ChatModel.find({'$or': [{from: userid}, {to:userid}]}, filter, function (err, chatMsg) {
+    res.send({
+      code: 0,
+      data: {
+        users,
+        chatMsg,
+      }
+    })
+  })
+})
+
+// 修改指定消息为已读
+router.post('/readmsg', function (req, res) {
+  // 得到请求中的from和to
+  const from = req.body.from
+  const to = req.cookies.userid
+  // 更新数据库中的chat数据
+  // 参数1：查询条件
+  // 参数2：更新为指定的数据对象
+  // 参数3：是否1次更新多条，默认只更新一条
+  // 参数4：更新完成的回调函数
+  ChatModel.update({from, to, read: false}, {read: true}, {multi: true}, function (err, doc) {
+    console.log(doc, 'readmsg')
+    res.send({
+      code: 0,
+      data: doc.nModified,
+    })
+  })
+})
+
+
 module.exports = router;
