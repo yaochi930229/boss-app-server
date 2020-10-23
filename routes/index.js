@@ -12,7 +12,7 @@ router.post('/register', function (req, res) {
   // 查询(根绝username)
   UserModel.findOne({
     username,
-  }, function (err, user) {
+  }, function (error, user) {
     // 如果 user 有值(已存在)
     if (user) {
       // 返回提示错误的信息
@@ -26,7 +26,7 @@ router.post('/register', function (req, res) {
         username,
         password: md5(password),
         type,
-      }).save((err, user) => {
+      }).save((error, user) => {
         // 生成一个cookie(userid:user._id),并交给浏览器保存
         res.cookie('userid', user._id, {maxAge: 1000*60*60*24})
         // 返回包含user的json数据
@@ -48,7 +48,8 @@ router.post('/login', function (req, res) {
   UserModel.findOne({
     username,
     password: md5(password),
-  }, filter, function(err, user) {
+  }, filter, function(error, user) {
+    console.log(user, 'user信息')
     if (user) {
       res.cookie('userid', user._id, {maxAge: 1000*60*60*24})
       res.send({
@@ -74,7 +75,7 @@ router.post('/updateUserInfo', function (req, res) {
   const user = req.body;
   UserModel.findByIdAndUpdate({
     _id: userid,
-  }, user, function (err, oldUser) {
+  }, user, function (error, oldUser) {
     if (!oldUser) {
       // 通知浏览器删除userid的cookie
       res.clearCookie('userid')
@@ -124,24 +125,25 @@ router.get('/userList', function (req, res) {
 })
 
 // 获取当前用户所有相关的聊天信息列表
-router.get('/messageList', function (req, res) {
+router.get('/msglist', function (req, res) {
   // 获取用户userid
   const userid = req.cookies.userid;
   // 查询得到所有user文档数组
-  UserModel.find(function (err, userDocs) {
+  let users;
+  UserModel.find(function (error, userDocs) {
     // 用对象存储所有user信息:key为user的_id，val为name和header组成的user对象
-    const users = userDocs.reduce((users, user) => {
+    users = userDocs.reduce((users, user) => {
       users[user._id] = { username: user.username, header: user.header }
       return users
     }, {})
   })
   // 查询userid相关的所有聊天信息
-  ChatModel.find({'$or': [{from: userid}, {to:userid}]}, filter, function (err, chatMsg) {
+  ChatModel.find({'$or': [{from: userid}, {to:userid}]}, filter, function (error, chatMsgs) {
     res.send({
       code: 0,
       data: {
         users,
-        chatMsg,
+        chatMsgs,
       }
     })
   })
@@ -157,7 +159,7 @@ router.post('/readmsg', function (req, res) {
   // 参数2：更新为指定的数据对象
   // 参数3：是否1次更新多条，默认只更新一条
   // 参数4：更新完成的回调函数
-  ChatModel.update({from, to, read: false}, {read: true}, {multi: true}, function (err, doc) {
+  ChatModel.update({from, to, read: false}, {read: true}, {multi: true}, function (error, doc) {
     console.log(doc, 'readmsg')
     res.send({
       code: 0,
